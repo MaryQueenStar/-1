@@ -14,6 +14,7 @@ const winConditions = [
     [0, 4, 8], [2, 4, 6]             // по диагонали
 ];
 
+// Проверка победителя
 function checkWinner() {
     for (let condition of winConditions) {
         const [a, b, c] = condition;
@@ -25,11 +26,11 @@ function checkWinner() {
     return null;
 }
 
+// Клик по клетке (ход человека)
 function handleCellClick(e) {
     const cell = e.target;
     const index = parseInt(cell.dataset.index);
 
-    // Ход человека
     if (boardState[index] === '' && isGameActive) {
         makeMove(index, HUMAN);
         cell.classList.add(HUMAN);
@@ -38,24 +39,21 @@ function handleCellClick(e) {
         if (result) {
             endGame(result);
         } else {
-            // Ход робота
-            statusElement.textContent = 'Ход робота...';
-            setTimeout(robotMove, 500); // Задержка для реалистичности
+            statusElement.textContent = 'Робот думает...';
+            setTimeout(robotMove, 500); // Небольшая пауза, чтобы казалось, что робот "думает"
         }
     }
 }
 
+// Умная логика робота
 function robotMove() {
     if (!isGameActive) return;
     
-    // Простой робот: ищет первую свободную клетку
-    let emptyCells = boardState.map((val, index) => val === '' ? index : null).filter(val => val !== null);
+    let move = findBestMove();
     
-    if (emptyCells.length > 0) {
-        // Выбираем случайную свободную клетку, чтобы робот не был слишком предсказуем
-        let randomIndex = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-        makeMove(randomIndex, ROBOT);
-        cells[randomIndex].classList.add(ROBOT);
+    if (move !== null) {
+        makeMove(move, ROBOT);
+        cells[move].classList.add(ROBOT);
 
         let result = checkWinner();
         if (result) {
@@ -64,6 +62,43 @@ function robotMove() {
             statusElement.textContent = 'Твой ход (Крестик)';
         }
     }
+}
+
+// Функция поиска лучшего хода для робота
+function findBestMove() {
+    // 1. Проверяем, может ли робот выиграть следующим ходом
+    for (let i = 0; i < 9; i++) {
+        if (boardState[i] === '') {
+            boardState[i] = ROBOT;
+            if (checkWinner() === ROBOT) {
+                boardState[i] = ''; 
+                return i;
+            }
+            boardState[i] = ''; 
+        }
+    }
+
+    // 2. Проверяем, не выигрывает ли игрок следующим ходом (если да - блокируем)
+    for (let i = 0; i < 9; i++) {
+        if (boardState[i] === '') {
+            boardState[i] = HUMAN;
+            if (checkWinner() === HUMAN) {
+                boardState[i] = ''; 
+                return i;
+            }
+            boardState[i] = '';
+        }
+    }
+
+    // 3. Занимаем центр или углы
+    const cornersAndCenter = [4, 0, 2, 6, 8]; 
+    for (let i of cornersAndCenter) {
+        if (boardState[i] === '') return i;
+    }
+
+    // 4. Если ничего не подошло, ставим в любую свободную клетку
+    let emptyCells = boardState.map((val, index) => val === '' ? index : null).filter(val => val !== null);
+    return emptyCells.length > 0 ? emptyCells[Math.floor(Math.random() * emptyCells.length)] : null;
 }
 
 function makeMove(index, player) {
